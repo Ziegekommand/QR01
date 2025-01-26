@@ -58,10 +58,23 @@
       // Kattintás esemény hozzáadása
       const changeBaseButton = document.getElementById('change-base-button');
       const modelViewer = document.getElementById('model-viewer');
+      const arButton = document.getElementById('ar-button');
       
       changeBaseButton.addEventListener('click', () => {
         alert('Kattintottál a gombra! Itt fogjuk a síkot változtatni.');
         // Itt lehet majd a sík módosítás funkciót hozzáadni.
+      });
+
+      // AR módba lépés esemény hozzáadása
+      arButton.addEventListener('click', () => {
+        modelViewer.enterAR();
+      });
+
+      // Model-viewer beállításai
+      modelViewer.addEventListener('ar-status', (event) => {
+        if (event.detail.status === 'session-started') {
+          console.log('AR mód elindítva');
+        }
       });
     </script>
   </body>
