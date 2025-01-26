@@ -6,26 +6,10 @@
     <meta name="description" content="&lt;model-viewer&gt; template">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link type="text/css" href="./styles.css" rel="stylesheet">
-    <style>
-      /* Narancssárga kör ikont a képernyő bal felső sarkában */
-      #change-base-button {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        width: 40px;
-        height: 40px;
-        background-color: orange;
-        border-radius: 50%;
-        border: none;
-        cursor: pointer;
-        z-index: 10;
-      }
-    </style>
   </head>
   <body>
     <!-- <model-viewer> HTML element -->
     <model-viewer 
-      id="model-viewer"
       src="https://github.com/Ziegekommand/QR01/blob/main/szex2.glb" 
       ar 
       ar-modes="webxr scene-viewer quick-look" 
@@ -34,7 +18,8 @@
       poster="poster.webp" 
       shadow-intensity="1" 
       camera-orbit="0deg 90deg 2.5m" 
-      interaction-prompt="none">
+      interaction-prompt="none"
+      id="modelViewer">
       
       <div class="progress-bar hide" slot="progress-bar">
           <div class="update-bar"></div>
@@ -47,33 +32,30 @@
       </div>
     </model-viewer>  
 
-    <!-- Narancssárga kör gomb -->
-    <button id="change-base-button"></button>
+    <!-- Sárga kör gomb -->
+    <button id="change-surface" style="position: absolute; top: 10px; left: 10px; width: 50px; height: 50px; background-color: yellow; border-radius: 50%; border: none; cursor: pointer;"></button>
 
     <script src="script.js"></script>
     <!-- Loads <model-viewer> for browsers: -->
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
-    
+
     <script>
-      // Kattintás esemény hozzáadása
-      const changeBaseButton = document.getElementById('change-base-button');
-      const modelViewer = document.getElementById('model-viewer');
-      const arButton = document.getElementById('ar-button');
+      const modelViewer = document.getElementById('modelViewer');
+      const changeSurfaceButton = document.getElementById('change-surface');
       
-      changeBaseButton.addEventListener('click', () => {
-        alert('Kattintottál a gombra! Itt fogjuk a síkot változtatni.');
-        // Itt lehet majd a sík módosítás funkciót hozzáadni.
+      // Az alapértelmezett sík meghatározása
+      let cameraOrbit = "0deg 90deg 2.5m";
+
+      // Kattintáskor az új sík pozíció beállítása
+      changeSurfaceButton.addEventListener('click', function() {
+        cameraOrbit = "0deg 0deg 2.5m"; // Ezt az értéket a felhasználó által kívánt felülethez igazíthatod
+        modelViewer.setAttribute('camera-orbit', cameraOrbit);
       });
 
-      // AR módba lépés esemény hozzáadása
-      arButton.addEventListener('click', () => {
-        modelViewer.enterAR();
-      });
-
-      // Model-viewer beállításai
+      // AR mód aktiválása
       modelViewer.addEventListener('ar-status', (event) => {
         if (event.detail.status === 'session-started') {
-          console.log('AR mód elindítva');
+          modelViewer.setAttribute('ar', 'true');
         }
       });
     </script>
