@@ -6,10 +6,26 @@
     <meta name="description" content="&lt;model-viewer&gt; template">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link type="text/css" href="./styles.css" rel="stylesheet">
+    <style>
+      /* Narancssárga kör ikont a képernyő bal felső sarkában */
+      #change-base-button {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        width: 40px;
+        height: 40px;
+        background-color: orange;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        z-index: 10;
+      }
+    </style>
   </head>
   <body>
     <!-- <model-viewer> HTML element -->
     <model-viewer 
+      id="model-viewer"
       src="https://github.com/Ziegekommand/QR01/blob/main/szex2.glb" 
       ar 
       ar-modes="webxr scene-viewer quick-look" 
@@ -17,7 +33,7 @@
       tone-mapping="neutral" 
       poster="poster.webp" 
       shadow-intensity="1" 
-      camera-orbit="0deg 90deg 1m" 
+      camera-orbit="0deg 90deg 2.5m" 
       interaction-prompt="none">
       
       <div class="progress-bar hide" slot="progress-bar">
@@ -31,8 +47,22 @@
       </div>
     </model-viewer>  
 
+    <!-- Narancssárga kör gomb -->
+    <button id="change-base-button"></button>
+
     <script src="script.js"></script>
     <!-- Loads <model-viewer> for browsers: -->
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
+    
+    <script>
+      // Kattintás esemény hozzáadása
+      const changeBaseButton = document.getElementById('change-base-button');
+      const modelViewer = document.getElementById('model-viewer');
+      
+      changeBaseButton.addEventListener('click', () => {
+        alert('Kattintottál a gombra! Itt fogjuk a síkot változtatni.');
+        // Itt lehet majd a sík módosítás funkciót hozzáadni.
+      });
+    </script>
   </body>
 </html>
