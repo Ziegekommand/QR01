@@ -1,112 +1,130 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR Autós Játék</title>
+    <title>AR Joystick Controlled Car with Plane Detection</title>
+    <meta charset="utf-8">
+    <meta name="description" content="AR joystick-controlled car with plane detection">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/jeromeetienne/ar.js@2.2.0/aframe/build/aframe-ar.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@master/examples/js/ar-hit-test.js"></script>
     <style>
-      /* Virtuális joystick stílus */
-      #joystick-container {
+      #joystick {
         position: absolute;
         bottom: 20px;
         left: 20px;
         width: 100px;
         height: 100px;
-        background: rgba(0, 0, 0, 0.5);
         border-radius: 50%;
-        touch-action: none;
+        background-color: rgba(255, 165, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2;
       }
-      #joystick {
-        position: absolute;
-        top: 25%;
-        left: 25%;
-        width: 50%;
-        height: 50%;
-        background: orange;
-        border-radius: 50%;
-        pointer-events: none;
+
+      #joystick:active {
+        background-color: rgba(255, 165, 0, 1);
       }
     </style>
   </head>
   <body style="margin: 0; overflow: hidden;">
-
-    <!-- A-Frame jelenet AR támogatással -->
-    <a-scene
-      vr-mode-ui="enabled: false"
-      embedded
-      arjs="sourceType: webcam; debugUIEnabled: false;">
-
-      <!-- Sík, amelyet az asztal reprezentál -->
-      <a-plane 
-        position="0 0 0" 
-        rotation="-90 0 0" 
-        width="5" 
-        height="5" 
-        color="#7BC8A4">
-      </a-plane>
-
-      <!-- Autó modell -->
-      <a-entity
-        id="car"
-        gltf-model="./car01.glb"
-        position="0 0.1 0"
-        rotation="0 0 0"
-        scale="0.5 0.5 0.5">
+    <!-- A-Frame Scene -->
+    <a-scene embedded arjs>
+      <!-- Hit Test Source for Plane Detection -->
+      <a-entity id="hit-test" 
+                raycaster="objects: .clickable" 
+                cursor="fuse: false; rayOrigin: mouse"
+                webxr-hit-test 
+                position="0 0 0">
       </a-entity>
-
-      <!-- Kamera AR módhoz -->
-      <a-entity camera></a-entity>
+      
+      <!-- Placeholder for detected plane -->
+      <a-entity id="placement-indicator" 
+                visible="false" 
+                geometry="primitive: ring; radiusOuter: 0.1; radiusInner: 0.08;" 
+                material="color: green; shader: flat" 
+                position="0 0 0" 
+                rotation="-90 0 0">
+      </a-entity>
+      
+      <!-- 3D Car Model -->
+      <a-entity id="car" 
+                gltf-model="./car.glb" 
+                visible="false" 
+                position="0 0 0" 
+                scale="0.5 0.5 0.5" 
+                class="clickable">
+      </a-entity>
+      
+      <!-- Lighting -->
+      <a-light type="ambient" intensity="0.5"></a-light>
+      <a-light type="directional" position="0 5 -5" intensity="1"></a-light>
     </a-scene>
 
-    <!-- Virtuális joystick -->
-    <div id="joystick-container">
-      <div id="joystick"></div>
-    </div>
+    <!-- Joystick -->
+    <div id="joystick">⬤</div>
 
     <script>
-      // Alap joystick logika
-      const joystickContainer = document.getElementById("joystick-container");
-      const joystick = document.getElementById("joystick");
-      const car = document.querySelector("#car");
+      const scene = document.querySelector('a-scene');
+      const car = document.querySelector('#car');
+      const hitTestEntity = document.querySelector('#hit-test');
+      const placementIndicator = document.querySelector('#placement-indicator');
+      let carPlaced = false;
 
-      let joystickActive = false;
-      let joystickStartX, joystickStartY;
+      // Enable hit test functionality when AR session starts
+      scene.addEventListener('enter-vr', () => {
+        const xrSession = scene.renderer.xr.getSession();
 
-      joystickContainer.addEventListener("touchstart", (e) => {
-        joystickActive = true;
-        const touch = e.touches[0];
-        joystickStartX = touch.clientX;
-        joystickStartY = touch.clientY;
-      });
+        xrSession.requestReferenceSpace('local-floor').then((referenceSpace) => {
+          xrSession.requestHitTestSource({ space: referenceSpace }).then((hitTestSource) => {
+            scene.addEventListener('updateFrame', () => {
+              const frame = scene.renderer.xr.getFrame();
 
-      joystickContainer.addEventListener("touchmove", (e) => {
-        if (!joystickActive) return;
-        const touch = e.touches[0];
-        const deltaX = touch.clientX - joystickStartX;
-        const deltaY = touch.clientY - joystickStartY;
+              // Perform hit test
+              const hitTestResults = frame.getHitTestResults(hitTestSource);
+              if (hitTestResults.length > 0) {
+                const hit = hitTestResults[0];
+                const pose = hit.getPose(referenceSpace);
 
-        // Mozgás vektorai
-        const moveX = deltaX * 0.01;
-        const moveZ = deltaY * 0.01;
+                placementIndicator.setAttribute('visible', true);
+                placementIndicator.object3D.position.set(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z);
 
-        // Autó mozgatása
-        const carPosition = car.getAttribute("position");
-        car.setAttribute("position", {
-          x: carPosition.x + moveX,
-          y: carPosition.y,
-          z: carPosition.z + moveZ,
+                if (!carPlaced && car.getAttribute('visible') === false) {
+                  car.object3D.position.set(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z);
+                  car.setAttribute('visible', true);
+                }
+              } else {
+                placementIndicator.setAttribute('visible', false);
+              }
+            });
+          });
         });
-
-        // Joystick vizuális visszajelzés
-        joystick.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
       });
 
-      joystickContainer.addEventListener("touchend", () => {
-        joystickActive = false;
-        joystick.style.transform = "translate(0, 0)";
+      // Joystick Control Logic
+      const joystick = document.getElementById('joystick');
+      let carPosition = { x: 0, y: 0, z: 0 };
+
+      joystick.addEventListener('touchmove', (event) => {
+        const touch = event.touches[0];
+        const deltaX = touch.clientX - window.innerWidth / 2;
+        const deltaY = touch.clientY - window.innerHeight / 2;
+
+        // Update car position based on joystick movement
+        carPosition.x += deltaX * 0.001;
+        carPosition.z += deltaY * 0.001;
+
+        car.object3D.position.set(carPosition.x, carPosition.y, carPosition.z);
       });
+
+      // Collision Detection Example
+      const checkCollision = () => {
+        if (carPosition.x > 5 || carPosition.x < -5 || carPosition.z > 5 || carPosition.z < -5) {
+          console.log('Collision detected!');
+        }
+      };
+
+      setInterval(checkCollision, 100); // Check for collision every 100ms
     </script>
   </body>
 </html>
