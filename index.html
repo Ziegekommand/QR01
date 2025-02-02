@@ -1,130 +1,150 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
   <head>
-    <title>AR Joystick Controlled Car with Plane Detection</title>
     <meta charset="utf-8">
-    <meta name="description" content="AR joystick-controlled car with plane detection">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@master/examples/js/ar-hit-test.js"></script>
+    <title>Virtuális Autóvezérlés Mobilbarát A‑Frame és WebXR segítségével</title>
+    <!-- A-Frame betöltése -->
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <style>
-      #joystick {
-        position: absolute;
+      /* Egyszerű stílus a vezérlő gombokhoz */
+      .control-container {
+        position: fixed;
         bottom: 20px;
-        left: 20px;
-        width: 100px;
-        height: 100px;
-        border-radius: 50%;
-        background-color: rgba(255, 165, 0, 0.7);
+        left: 50%;
+        transform: translateX(-50%);
         display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 2;
+        gap: 10px;
+        z-index: 1000;
       }
-
-      #joystick:active {
-        background-color: rgba(255, 165, 0, 1);
+      .control-button {
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        border: none;
+        border-radius: 5px;
+        padding: 15px;
+        font-size: 16px;
+      }
+      /* Egy külön sor a forgatás gomboknak */
+      .rotate-container {
+        position: fixed;
+        bottom: 90px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 10px;
+        z-index: 1000;
       }
     </style>
   </head>
-  <body style="margin: 0; overflow: hidden;">
-    <!-- A-Frame Scene -->
-    <a-scene embedded arjs>
-      <!-- Hit Test Source for Plane Detection -->
-      <a-entity id="hit-test" 
-                raycaster="objects: .clickable" 
-                cursor="fuse: false; rayOrigin: mouse"
-                webxr-hit-test 
-                position="0 0 0">
-      </a-entity>
-      
-      <!-- Placeholder for detected plane -->
-      <a-entity id="placement-indicator" 
-                visible="false" 
-                geometry="primitive: ring; radiusOuter: 0.1; radiusInner: 0.08;" 
-                material="color: green; shader: flat" 
-                position="0 0 0" 
-                rotation="-90 0 0">
-      </a-entity>
-      
-      <!-- 3D Car Model -->
+  <body>
+    <!-- A-Frame scene -->
+    <a-scene>
+      <!-- Az asset-ek előtöltése -->
+      <a-assets>
+        <a-asset-item id="carModel" src="car.glb"></a-asset-item>
+      </a-assets>
+
+      <!-- Autó entitás a modelltöltéssel és vezérlő komponenssel -->
       <a-entity id="car" 
-                gltf-model="./car.glb" 
-                visible="false" 
+                gltf-model="#carModel" 
                 position="0 0 0" 
-                scale="0.5 0.5 0.5" 
-                class="clickable">
+                rotation="0 0 0" 
+                scale="1 1 1" 
+                car-controller>
       </a-entity>
-      
-      <!-- Lighting -->
-      <a-light type="ambient" intensity="0.5"></a-light>
-      <a-light type="directional" position="0 5 -5" intensity="1"></a-light>
+
+      <!-- Talaj -->
+      <a-plane rotation="-90 0 0" width="100" height="100" color="#7BC8A4"></a-plane>
+
+      <!-- Kamera -->
+      <a-entity camera position="0 2 5"></a-entity>
+
+      <!-- Egyedi komponens a car mozgatásához -->
+      <script>
+        AFRAME.registerComponent('car-controller', {
+          schema: {
+            speed: { type: 'number', default: 0.1 },
+            turnSpeed: { type: 'number', default: 2 }
+          },
+          init: function () {
+            // Billentyűzet események figyelése:
+            this.keys = {};
+            window.addEventListener('keydown', e => {
+              this.keys[e.key.toLowerCase()] = true;
+            });
+            window.addEventListener('keyup', e => {
+              this.keys[e.key.toLowerCase()] = false;
+            });
+            
+            // Mobil érintéses vezérlés eseménykezelése:
+            // A HTML gombok azonosítója alapján állítjuk be a megfelelő kulcsokat
+            const setKey = (key, value) => {
+              this.keys[key] = value;
+            };
+            
+            // Előre
+            document.getElementById('btnForward')
+              .addEventListener('touchstart', e => { setKey('w', true); e.preventDefault(); });
+            document.getElementById('btnForward')
+              .addEventListener('touchend', e => { setKey('w', false); e.preventDefault(); });
+            
+            // Hátra
+            document.getElementById('btnBackward')
+              .addEventListener('touchstart', e => { setKey('s', true); e.preventDefault(); });
+            document.getElementById('btnBackward')
+              .addEventListener('touchend', e => { setKey('s', false); e.preventDefault(); });
+            
+            // Balra
+            document.getElementById('btnLeft')
+              .addEventListener('touchstart', e => { setKey('a', true); e.preventDefault(); });
+            document.getElementById('btnLeft')
+              .addEventListener('touchend', e => { setKey('a', false); e.preventDefault(); });
+            
+            // Jobbra
+            document.getElementById('btnRight')
+              .addEventListener('touchstart', e => { setKey('d', true); e.preventDefault(); });
+            document.getElementById('btnRight')
+              .addEventListener('touchend', e => { setKey('d', false); e.preventDefault(); });
+          },
+          tick: function (time, delta) {
+            delta = delta / 1000; // idő lépés másodpercben
+            var position = this.el.getAttribute('position');
+            var rotation = this.el.getAttribute('rotation');
+
+            // Mozgás: W - előre, S - hátra
+            if (this.keys['w']) {
+              position.x -= Math.sin(THREE.Math.degToRad(rotation.y)) * this.data.speed;
+              position.z -= Math.cos(THREE.Math.degToRad(rotation.y)) * this.data.speed;
+            }
+            if (this.keys['s']) {
+              position.x += Math.sin(THREE.Math.degToRad(rotation.y)) * this.data.speed;
+              position.z += Math.cos(THREE.Math.degToRad(rotation.y)) * this.data.speed;
+            }
+            // Forgatás: A - balra, D - jobbra
+            if (this.keys['a']) {
+              rotation.y += this.data.turnSpeed;
+            }
+            if (this.keys['d']) {
+              rotation.y -= this.data.turnSpeed;
+            }
+            
+            this.el.setAttribute('position', position);
+            this.el.setAttribute('rotation', rotation);
+          }
+        });
+      </script>
     </a-scene>
 
-    <!-- Joystick -->
-    <div id="joystick">⬤</div>
-
-    <script>
-      const scene = document.querySelector('a-scene');
-      const car = document.querySelector('#car');
-      const hitTestEntity = document.querySelector('#hit-test');
-      const placementIndicator = document.querySelector('#placement-indicator');
-      let carPlaced = false;
-
-      // Enable hit test functionality when AR session starts
-      scene.addEventListener('enter-vr', () => {
-        const xrSession = scene.renderer.xr.getSession();
-
-        xrSession.requestReferenceSpace('local-floor').then((referenceSpace) => {
-          xrSession.requestHitTestSource({ space: referenceSpace }).then((hitTestSource) => {
-            scene.addEventListener('updateFrame', () => {
-              const frame = scene.renderer.xr.getFrame();
-
-              // Perform hit test
-              const hitTestResults = frame.getHitTestResults(hitTestSource);
-              if (hitTestResults.length > 0) {
-                const hit = hitTestResults[0];
-                const pose = hit.getPose(referenceSpace);
-
-                placementIndicator.setAttribute('visible', true);
-                placementIndicator.object3D.position.set(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z);
-
-                if (!carPlaced && car.getAttribute('visible') === false) {
-                  car.object3D.position.set(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z);
-                  car.setAttribute('visible', true);
-                }
-              } else {
-                placementIndicator.setAttribute('visible', false);
-              }
-            });
-          });
-        });
-      });
-
-      // Joystick Control Logic
-      const joystick = document.getElementById('joystick');
-      let carPosition = { x: 0, y: 0, z: 0 };
-
-      joystick.addEventListener('touchmove', (event) => {
-        const touch = event.touches[0];
-        const deltaX = touch.clientX - window.innerWidth / 2;
-        const deltaY = touch.clientY - window.innerHeight / 2;
-
-        // Update car position based on joystick movement
-        carPosition.x += deltaX * 0.001;
-        carPosition.z += deltaY * 0.001;
-
-        car.object3D.position.set(carPosition.x, carPosition.y, carPosition.z);
-      });
-
-      // Collision Detection Example
-      const checkCollision = () => {
-        if (carPosition.x > 5 || carPosition.x < -5 || carPosition.z > 5 || carPosition.z < -5) {
-          console.log('Collision detected!');
-        }
-      };
-
-      setInterval(checkCollision, 100); // Check for collision every 100ms
-    </script>
+    <!-- Mobil érintéses vezérlő gombok -->
+    <!-- Elölre és hátra mozgatás -->
+    <div class="control-container">
+      <button id="btnBackward" class="control-button">Hátra</button>
+      <button id="btnForward" class="control-button">Előre</button>
+    </div>
+    <!-- Balra és jobbra forgatás -->
+    <div class="rotate-container">
+      <button id="btnLeft" class="control-button">Balra</button>
+      <button id="btnRight" class="control-button">Jobbra</button>
+    </div>
   </body>
 </html>
